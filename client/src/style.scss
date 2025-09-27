@@ -19,18 +19,21 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  padding: 1rem;
   
   .join-form {
     background: white;
     padding: 2rem;
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    min-width: 300px;
+    width: 100%;
+    max-width: 400px;
     
     h1 {
       text-align: center;
       margin-bottom: 1.5rem;
       color: #333;
+      font-size: 1.5rem;
     }
     
     form {
@@ -39,10 +42,13 @@ body {
       gap: 1rem;
       
       input, select {
-        padding: 0.75rem;
+        padding: 1rem;
         border: 2px solid #e1e5e9;
         border-radius: 8px;
         font-size: 1rem;
+        min-height: 48px;
+        -webkit-appearance: none;
+        appearance: none;
         
         &:focus {
           outline: none;
@@ -50,19 +56,40 @@ body {
         }
       }
       
+      select {
+        background: white;
+        cursor: pointer;
+      }
+      
       button {
-        padding: 0.75rem;
+        padding: 1rem;
         background: #667eea;
         color: white;
         border: none;
         border-radius: 8px;
         font-size: 1rem;
+        min-height: 48px;
         cursor: pointer;
         transition: background 0.2s;
+        touch-action: manipulation;
         
-        &:hover {
+        &:hover, &:active {
           background: #5a6fd8;
         }
+      }
+    }
+  }
+}
+
+@media (max-width: 480px) {
+  .join-container {
+    padding: 0.5rem;
+    
+    .join-form {
+      padding: 1.5rem;
+      
+      h1 {
+        font-size: 1.25rem;
       }
     }
   }
