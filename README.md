@@ -6,6 +6,7 @@ A web-based real-time language exchange chat platform where users can communicat
 
 - **Real-time messaging** with Socket.IO
 - **Automatic translation** using LibreTranslate API
+- **Voice & Video calls** with WebRTC
 - **Speech-to-text** input via Web Speech API
 - **Text-to-speech** playback for translations
 - **Live typing indicators** and user presence
@@ -58,6 +59,7 @@ language-exchange-chat/
 3. Start chatting - messages auto-translate for other users
 4. Use mic button for speech-to-text
 5. Click 🔊 to hear translations
+6. Click 📞 for voice calls or 📹 for video calls with other users
 
 ## Supported Languages
 

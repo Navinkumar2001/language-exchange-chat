@@ -46,8 +46,11 @@
             {{ user.name }}
             <template v-slot:append v-if="user.id !== userId">
               <v-icon size="16" color="blue">mdi-chat</v-icon>
-              <v-btn @click.stop="initiateCall(user)" icon size="x-small" variant="text">
+              <v-btn @click.stop="initiateCall(user, false)" icon size="x-small" variant="text">
                 <v-icon size="16" color="green">mdi-phone</v-icon>
+              </v-btn>
+              <v-btn @click.stop="initiateCall(user, true)" icon size="x-small" variant="text">
+                <v-icon size="16" color="blue">mdi-video</v-icon>
               </v-btn>
             </template>
           </v-chip>
@@ -87,35 +90,65 @@
             <span class="name-initial">{{ getSenderName(message)[0].toUpperCase() }}</span>
           </div>
           <div class="message-content">
-          <div class="message-header" v-if="message.isPrivate">
-            <span class="private-label">🔒 Private</span>
+            <v-menu v-if="message.senderId === userId" location="bottom end">
+              <template v-slot:activator="{ props }">
+                <v-btn v-bind="props" icon size="small" variant="text" class="message-menu">
+                  <v-icon size="small">mdi-dots-vertical</v-icon>
+                </v-btn>
+              </template>
+              <v-list density="compact">
+                <v-list-item @click="startEdit(message)">
+                  <template v-slot:prepend>
+                    <v-icon size="small">mdi-pencil</v-icon>
+                  </template>
+                  <v-list-item-title>Edit</v-list-item-title>
+                </v-list-item>
+                <v-list-item @click="deleteMessage(message)">
+                  <template v-slot:prepend>
+                    <v-icon size="small" color="red">mdi-delete</v-icon>
+                  </template>
+                  <v-list-item-title>Delete</v-list-item-title>
+                </v-list-item>
+              </v-list>
+            </v-menu>
+            <div class="message-header" v-if="message.isPrivate">
+              <span class="private-label">🔒 Private</span>
+            </div>
+            <div class="original" v-if="!editingMessage || editingMessage.id !== message.id">{{ message.original.text }}</div>
+            <v-text-field 
+              v-if="editingMessage && editingMessage.id === message.id"
+              v-model="editText"
+              @keyup.enter="saveEdit(message)"
+              @keyup.escape="cancelEdit"
+              variant="outlined"
+              density="compact"
+              hide-details
+              autofocus
+            ></v-text-field>
+            <div v-if="message.senderId !== userId" class="translation-controls">
+              <v-btn @click="translateMessage(message)" size="small" variant="outlined">
+                <v-icon start size="small">mdi-translate</v-icon>
+                Translate
+              </v-btn>
+            </div>
+            <div v-if="customTranslations[message.id]" class="custom-translation" :data-message-id="message.id">
+              {{ customTranslations[message.id] }}
+              <v-btn @click="speakText(customTranslations[message.id], participants.find(p => p.id === userId)?.language)" icon size="x-small" variant="text">
+                <v-icon size="small">mdi-volume-high</v-icon>
+              </v-btn>
+            </div>
           </div>
-          <div class="original">{{ message.original.text }}</div>
-          <!-- <div v-if="getTranslation(message)" class="translation">
-            {{ getTranslation(message) }}
-            <v-btn @click="speakText(getTranslation(message), participants.find(p => p.id === userId)?.language)" icon size="x-small" variant="text">
-              <v-icon size="small">mdi-volume-high</v-icon>
-            </v-btn>
-          </div> -->
-          <div v-if="message.senderId !== userId" class="translation-controls">
-            <v-btn @click="translateMessage(message)" size="small" variant="outlined">
-              <v-icon start size="small">mdi-translate</v-icon>
-              Translate
-            </v-btn>
-          </div>
-          <div v-if="customTranslations[message.id]" class="custom-translation" :data-message-id="message.id">
-            {{ customTranslations[message.id] }}
-            <v-btn @click="speakText(customTranslations[message.id], participants.find(p => p.id === userId)?.language)" icon size="x-small" variant="text">
-              <v-icon size="small">mdi-volume-high</v-icon>
-            </v-btn>
-          </div>
-        </div>
         </div>
         <div class="timestamp">{{ formatTime(message.timestamp) }}</div>
       </div>
       
       <div v-if="typingUsers.length" class="typing-indicator">
-        {{ typingUsers.join(', ') }} {{ typingUsers.length === 1 ? 'is' : 'are' }} typing...
+        {{ typingUsers.join(', ') }} {{ typingUsers.length === 1 ? 'is' : 'are' }} typing
+        <span class="typing-dots">
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
       </div>
     </div>
 
@@ -199,11 +232,14 @@
     <!-- Call Controls Component -->
     <CallControls 
       :is-incoming-call="isIncomingCall"
+      :is-outgoing-call="isOutgoingCall"
       :is-call-active="isCallActive"
-      :caller-name="callerName"
+      :other-user-name="otherUserName"
+      :current-user-name="currentUserName"
       :local-stream="localStream"
       :remote-stream="remoteStream"
-      @answer-call="answerCall"
+      :is-video-call="isVideoCall"
+      @answer-call="(isVideo) => answerCall(isVideo)"
       @reject-call="rejectCall"
       @end-call="endCall"
     />
@@ -223,19 +259,24 @@ import { gsap } from 'gsap'
 const props = defineProps(['roomData', 'userId'])
 const { socket } = useSocket()
 const { startRecording, stopRecording, isRecording, transcript } = useSpeech()
-const { animateMessageIn, animatePrivateChatBanner, animateTranslationAppear } = useAnimations()
+const { animateMessageIn, animatePrivateChatBanner, animateTranslationAppear, createRippleEffect, animateMessageSend } = useAnimations()
+const webRTC = useWebRTC(socket)
 const { 
   localStream, 
   remoteStream, 
   isCallActive, 
   isIncomingCall, 
+  isOutgoingCall,
   callerId, 
-  callerName, 
+  otherUserName, 
+  isVideoCall,
   startCall, 
   answerCall, 
   endCall, 
   rejectCall 
-} = useWebRTC(socket)
+} = webRTC
+
+const currentUserName = computed(() => getCurrentUser()?.name || 'User')
 
 const messages = ref([])
 const participants = ref(props.roomData?.participants || [])
@@ -248,6 +289,8 @@ const privateChat = ref({ active: false, user: null })
 const customTranslations = ref({})
 const translatingMessages = ref(new Set())
 const showEmojiPicker = ref(false)
+const editingMessage = ref(null)
+const editText = ref('')
 
 const emojis = [
   '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇',
@@ -298,6 +341,10 @@ const formatTime = (timestamp) => {
 
 const sendMessage = () => {
   if (!messageText.value.trim()) return
+  
+  // Animate send action
+  const inputEl = document.querySelector('.message-input')
+  if (inputEl) animateMessageSend(inputEl)
   
   const userLang = participants.value.find(p => p.id === props.userId)?.language || 'en'
   const currentRoomId = props.roomData?.roomId || 'general'
@@ -395,20 +442,53 @@ const addEmoji = (emoji) => {
   showEmojiPicker.value = false
 }
 
-const initiateCall = (user) => {
-  startCall(user.id, user.name)
+const initiateCall = (user, isVideo = false) => {
+  startCall(user.id, user.name, isVideo)
+}
+
+const startEdit = (message) => {
+  editingMessage.value = message
+  editText.value = message.original.text
+}
+
+const saveEdit = (message) => {
+  if (!editText.value.trim()) return
+  
+  socket.emit('edit_message', {
+    messageId: message.id,
+    newText: editText.value
+  })
+  
+  editingMessage.value = null
+  editText.value = ''
+}
+
+const cancelEdit = () => {
+  editingMessage.value = null
+  editText.value = ''
+}
+
+const deleteMessage = (message) => {
+  socket.emit('delete_message', {
+    messageId: message.id
+  })
 }
 
 const createSpark = (event) => {
-  const spark = document.createElement('div')
-  spark.className = 'spark'
-  spark.style.left = event.clientX + 'px'
-  spark.style.top = event.clientY + 'px'
-  document.body.appendChild(spark)
-  
-  setTimeout(() => {
-    spark.remove()
-  }, 600)
+  if (Math.random() > 0.7) { // Reduce frequency
+    const spark = document.createElement('div')
+    spark.className = 'spark'
+    spark.style.left = event.clientX + 'px'
+    spark.style.top = event.clientY + 'px'
+    document.body.appendChild(spark)
+    
+    // Add ripple effect on click
+    createRippleEffect(event.target, event.offsetX, event.offsetY)
+    
+    setTimeout(() => {
+      spark.remove()
+    }, 800)
+  }
 }
 
 const scrollToBottom = () => {
@@ -466,6 +546,17 @@ socket.on('user_typing', ({ userId, isTyping }) => {
   }
 })
 
+socket.on('message_edited', ({ messageId, newText }) => {
+  const messageIndex = messages.value.findIndex(m => m.id === messageId)
+  if (messageIndex !== -1) {
+    messages.value[messageIndex].original.text = newText
+  }
+})
+
+socket.on('message_deleted', ({ messageId }) => {
+  messages.value = messages.value.filter(m => m.id !== messageId)
+})
+
 // Watch for speech transcript
 watch(transcript, (newTranscript) => {
   if (newTranscript) {
@@ -480,3 +571,27 @@ onMounted(() => {
   scrollToBottom()
 })
 </script>
+
+<style scoped>
+.message {
+  position: relative;
+}
+
+.message-wrapper {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  position: relative;
+}
+
+.message-content {
+  position: relative;
+}
+
+.message-menu {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10;
+}
+</style>

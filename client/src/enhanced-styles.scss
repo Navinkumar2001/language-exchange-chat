@@ -1,0 +1,190 @@
+/* Enhanced Animations & Designs */
+
+/* Animated Background */
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+  background-size: 400% 400%;
+  animation: gradientFlow 15s ease infinite;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Enhanced Join Form */
+.join-form {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 25px 50px rgba(0,0,0,0.15) !important;
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Enhanced Messages */
+.message-content {
+  backdrop-filter: blur(15px) !important;
+  border-radius: 16px !important;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.message-content:hover {
+  transform: translateY(-2px) scale(1.02) !important;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12) !important;
+}
+
+/* Enhanced Buttons */
+.mic-button, .send-button, .emoji-button {
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.mic-button::before, .send-button::before, .emoji-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.mic-button:hover::before, .send-button:hover::before, .emoji-button:hover::before {
+  left: 100%;
+}
+
+/* Floating Particles */
+.chat-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.15), transparent),
+    radial-gradient(1px 1px at 90px 40px, rgba(255,255,255,0.1), transparent);
+  background-repeat: repeat;
+  background-size: 150px 100px;
+  animation: sparkleMove 30s linear infinite;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes sparkleMove {
+  0% { transform: translateY(0px); }
+  100% { transform: translateY(-100px); }
+}
+
+/* Enhanced Typing Indicator */
+.typing-indicator {
+  background: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(10px) !important;
+  padding: 0.8rem 1.2rem !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.typing-dots {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 5px;
+}
+
+.typing-dots span {
+  width: 6px;
+  height: 6px;
+  background: rgba(102, 126, 234, 0.8);
+  border-radius: 50%;
+  animation: typingDots 1.4s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(1) { animation-delay: 0s; }
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes typingDots {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-10px);
+    opacity: 1;
+  }
+}
+
+/* Enhanced Sparks */
+.spark {
+  width: 8px !important;
+  height: 8px !important;
+  background: radial-gradient(circle, #fff 0%, #667eea 40%, #f093fb 80%, transparent 100%) !important;
+  animation: sparkle 0.8s ease-out forwards !important;
+}
+
+@keyframes sparkle {
+  0% { opacity: 1; transform: scale(0) rotate(0deg); }
+  30% { opacity: 1; transform: scale(1.4) rotate(120deg); }
+  100% { opacity: 0; transform: scale(0.2) rotate(360deg); }
+}
+
+/* Ripple Effect */
+.ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,0.6), transparent);
+  pointer-events: none;
+  z-index: 1000;
+  transform: translate(-50%, -50%);
+  animation: ripple 0.6s ease-out;
+}
+
+@keyframes ripple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+  }
+  100% {
+    width: 100px;
+    height: 100px;
+    opacity: 0;
+  }
+}
+
+/* Enhanced Participant Chips */
+.participant-chip {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 20px !important;
+}
+
+.participant-chip:hover {
+  transform: translateY(-3px) scale(1.05) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Enhanced Input Container */
+.input-container {
+  backdrop-filter: blur(25px) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Enhanced Message Input */
+.message-input .v-field {
+  border-radius: 28px !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.message-input:focus-within .v-field__field {
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-color: rgba(102, 126, 234, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+  transform: translateY(-1px) !important;
+}

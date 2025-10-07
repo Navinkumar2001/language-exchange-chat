@@ -117,11 +117,24 @@ io.on('connection', (socket) => {
   });
 
   // WebRTC Call Signaling
-  socket.on('call_offer', ({ offer, targetUserId, targetUserName }) => {
+  socket.on('call_offer', ({ offer, targetUserId, targetUserName, isVideo }) => {
+    // Find the caller's name from room participants
+    let callerName = 'Unknown';
+    for (const [roomId, room] of rooms.entries()) {
+      const caller = room.participants.find(p => p.id === socket.id);
+      if (caller) {
+        callerName = caller.name;
+        break;
+      }
+    }
+    
+    console.log(`Call: ${callerName} (${socket.id}) calling ${targetUserName} (${targetUserId})`);
+    
     socket.to(targetUserId).emit('call_offer', {
       offer,
       callerId: socket.id,
-      callerName: targetUserName
+      callerName,
+      isVideo
     });
   });
 
@@ -139,6 +152,36 @@ io.on('connection', (socket) => {
 
   socket.on('call_reject', ({ targetUserId }) => {
     socket.to(targetUserId).emit('call_reject');
+  });
+
+  socket.on('edit_message', ({ messageId, newText }) => {
+    // Find message in any room
+    let foundMessage = null;
+    let roomId = null;
+    for (const [rId, room] of rooms.entries()) {
+      foundMessage = room.messages.find(m => m.id === messageId && m.senderId === socket.id);
+      if (foundMessage) {
+        roomId = rId;
+        break;
+      }
+    }
+    
+    if (foundMessage) {
+      foundMessage.original.text = newText;
+      io.to(roomId).emit('message_edited', { messageId, newText });
+    }
+  });
+
+  socket.on('delete_message', ({ messageId }) => {
+    // Find and remove message from any room
+    for (const [roomId, room] of rooms.entries()) {
+      const messageIndex = room.messages.findIndex(m => m.id === messageId && m.senderId === socket.id);
+      if (messageIndex !== -1) {
+        room.messages.splice(messageIndex, 1);
+        io.to(roomId).emit('message_deleted', { messageId });
+        break;
+      }
+    }
   });
 
   socket.on('disconnect', () => {

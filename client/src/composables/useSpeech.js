@@ -21,7 +21,7 @@ export function useSpeech() {
   }
 
   const startRecording = () => {
-    if (recognition) {
+    if (recognition && !isRecording.value) {
       isRecording.value = true
       transcript.value = ''
       recognition.start()

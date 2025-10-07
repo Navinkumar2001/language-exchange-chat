@@ -6,8 +6,10 @@ export function useWebRTC(socket) {
   const peerConnection = ref(null)
   const isCallActive = ref(false)
   const isIncomingCall = ref(false)
+  const isOutgoingCall = ref(false)
   const callerId = ref(null)
-  const callerName = ref('')
+  const otherUserName = ref('')
+  const isVideoCall = ref(false)
 
   const configuration = {
     iceServers: [
@@ -32,9 +34,12 @@ export function useWebRTC(socket) {
     }
   }
 
-  const startCall = async (targetUserId, targetUserName) => {
+  const startCall = async (targetUserId, targetUserName, isVideo = false) => {
     try {
-      localStream.value = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const constraints = isVideo ? { audio: true, video: { width: 320, height: 240 } } : { audio: true }
+      
+      console.log('Starting call with constraints:', constraints)
+      localStream.value = await navigator.mediaDevices.getUserMedia(constraints)
       initializePeerConnection()
       
       localStream.value.getTracks().forEach(track => {
@@ -47,20 +52,28 @@ export function useWebRTC(socket) {
       socket.emit('call_offer', {
         offer,
         targetUserId,
-        targetUserName
+        targetUserName,
+        isVideo
       })
       
       callerId.value = targetUserId
-      callerName.value = targetUserName
-      isCallActive.value = true
+      otherUserName.value = targetUserName
+      isVideoCall.value = isVideo
+      isOutgoingCall.value = true
     } catch (error) {
       console.error('Error starting call:', error)
+      alert('Could not access camera/microphone: ' + error.message)
     }
   }
 
-  const answerCall = async () => {
+  const answerCall = async (isVideo = false) => {
     try {
-      localStream.value = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Use the same video setting as the incoming call
+      const videoEnabled = isVideo || isVideoCall.value
+      const constraints = videoEnabled ? { audio: true, video: { width: 320, height: 240 } } : { audio: true }
+      
+      console.log('Getting user media with constraints:', constraints)
+      localStream.value = await navigator.mediaDevices.getUserMedia(constraints)
       
       localStream.value.getTracks().forEach(track => {
         peerConnection.value.addTrack(track, localStream.value)
@@ -78,6 +91,7 @@ export function useWebRTC(socket) {
       isCallActive.value = true
     } catch (error) {
       console.error('Error answering call:', error)
+      alert('Could not access camera/microphone: ' + error.message)
     }
   }
 
@@ -96,31 +110,32 @@ export function useWebRTC(socket) {
     
     isCallActive.value = false
     isIncomingCall.value = false
+    isOutgoingCall.value = false
     callerId.value = null
-    callerName.value = ''
+    otherUserName.value = ''
     remoteStream.value = null
   }
 
   const rejectCall = () => {
     socket.emit('call_reject', { targetUserId: callerId.value })
     isIncomingCall.value = false
+    isOutgoingCall.value = false
     callerId.value = null
-    callerName.value = ''
+    otherUserName.value = ''
   }
 
   // Socket event listeners
-  socket.on('call_offer', async ({ offer, callerId: incomingCallerId, callerName: incomingCallerName }) => {
+  socket.on('call_offer', async ({ offer, callerId: incomingCallerId, callerName: incomingCallerName, isVideo }) => {
     callerId.value = incomingCallerId
-    callerName.value = incomingCallerName
+    otherUserName.value = incomingCallerName
+    isVideoCall.value = isVideo || false
     isIncomingCall.value = true
     
     initializePeerConnection()
     await peerConnection.value.setRemoteDescription(offer)
   })
 
-  socket.on('call_answer', async ({ answer }) => {
-    await peerConnection.value.setRemoteDescription(answer)
-  })
+
 
   socket.on('ice_candidate', async ({ candidate }) => {
     await peerConnection.value.addIceCandidate(candidate)
@@ -132,8 +147,15 @@ export function useWebRTC(socket) {
 
   socket.on('call_reject', () => {
     isCallActive.value = false
+    isOutgoingCall.value = false
     callerId.value = null
-    callerName.value = ''
+    otherUserName.value = ''
+  })
+
+  socket.on('call_answer', async ({ answer }) => {
+    await peerConnection.value.setRemoteDescription(answer)
+    isOutgoingCall.value = false
+    isCallActive.value = true
   })
 
   onUnmounted(() => {
@@ -145,8 +167,10 @@ export function useWebRTC(socket) {
     remoteStream,
     isCallActive,
     isIncomingCall,
+    isOutgoingCall,
     callerId,
-    callerName,
+    otherUserName,
+    isVideoCall,
     startCall,
     answerCall,
     endCall,
